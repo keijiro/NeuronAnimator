@@ -147,11 +147,11 @@ public class NeuronAnimatorInstance : NeuronInstance
 	public void ApplyMotion( NeuronActor actor, Animator animator, Vector3[] positionOffsets, Quaternion[] rotationOffsets )
 	{		
 		// apply Hips position
-		SetPosition( animator, HumanBodyBones.Hips, actor.GetReceivedPosition( NeuronBones.Hips ) + positionOffsets[(int)HumanBodyBones.Hips] );
+		SetPosition( animator, HumanBodyBones.Hips, actor.GetReceivedPosition( NeuronBones.Hips ) * _scaleFactorForHips);// + positionOffsets[(int)HumanBodyBones.Hips] );
 		SetRotation( animator, HumanBodyBones.Hips, actor.GetReceivedRotation( NeuronBones.Hips ) );
 		
 		// apply positions
-		if( actor.withDisplacement  && false)
+		if( actor.withDisplacement && false)
 		{
 			// legs
 			SetPosition( animator, HumanBodyBones.RightUpperLeg,			actor.GetReceivedPosition( NeuronBones.RightUpLeg ) + positionOffsets[(int)HumanBodyBones.RightUpperLeg] );
@@ -291,6 +291,20 @@ public class NeuronAnimatorInstance : NeuronInstance
 		SetRotation( animator, rotationOffsets, HumanBodyBones.LeftLittleProximal,		actor.GetReceivedRotation( NeuronBones.LeftHandPinky1 ) + actor.GetReceivedRotation( NeuronBones.LeftInHandPinky ) );
 		SetRotation( animator, rotationOffsets, HumanBodyBones.LeftLittleIntermediate,	actor.GetReceivedRotation( NeuronBones.LeftHandPinky2 ) );
 		SetRotation( animator, rotationOffsets, HumanBodyBones.LeftLittleDistal,			actor.GetReceivedRotation( NeuronBones.LeftHandPinky3 ) );		
+
+		{
+            Transform tl = animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+            Transform tr = animator.GetBoneTransform(HumanBodyBones.RightFoot);
+            float yoffs;
+
+            if (tl.position.y < tr.position.y)
+                yoffs = tl.position.y - animator.leftFeetBottomHeight;
+            else
+                yoffs = tr.position.y - animator.rightFeetBottomHeight;
+
+            Transform t3 = animator.GetBoneTransform(HumanBodyBones.Hips);
+            t3.position -= Vector3.up * yoffs;
+        }
 	}
 	
 
@@ -301,6 +315,8 @@ public class NeuronAnimatorInstance : NeuronInstance
         else
             return t.localRotation;
     }
+
+    float _scaleFactorForHips;
 	
 	void UpdateOffset()
 	{
@@ -324,6 +340,9 @@ public class NeuronAnimatorInstance : NeuronInstance
 				bonePositionOffsets[(int)HumanBodyBones.RightUpperLeg] = new Vector3( 0.0f, rightLegTransform.localPosition.y, 0.0f );
 				bonePositionOffsets[(int)HumanBodyBones.Hips] = new Vector3( 0.0f, -( leftLegTransform.localPosition.y + rightLegTransform.localPosition.y ) * 0.5f, 0.0f );
 			}
+
+            var th = boundAnimator.GetBoneTransform(HumanBodyBones.Hips);
+            _scaleFactorForHips = th.position.y / 1.113886f;
 
             for (var i = 0; i < (int)HumanBodyBones.LastBone; ++i)
             {
