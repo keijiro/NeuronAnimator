@@ -1,15 +1,28 @@
+//
+// Neuron animator class
+//
+// Refactored by Keijiro Takahashi
+// https://github.com/keijiro/NeuronRetargeting
+//
+// This is a derivative work of the Perception Neuron SDK. You can use this
+// freely as one of "Perception Neuron SDK Derivatives". See LICENSE.pdf and
+// their website for further details.
+//
+
 using UnityEngine;
 using Neuron;
 
-public class NeuronAnimatorInstance : MonoBehaviour
+[RequireComponent(typeof(Animator))]
+[AddComponentMenu("Perception Neuron/Neuron Animator")]
+public class NeuronAnimator : MonoBehaviour
 {
     #region Editable variables
 
     [SerializeField]
-    string _hostAddress = "127.0.0.1";
+    string _address = "127.0.0.1";
 
     [SerializeField]
-    int _listenPort = 7001;
+    int _port = 7001;
 
     [SerializeField]
     NeuronConnection.SocketType	_socketType = NeuronConnection.SocketType.TCP;
@@ -29,7 +42,7 @@ public class NeuronAnimatorInstance : MonoBehaviour
 
     void OnEnable()
     {
-        _source = NeuronConnection.Connect(_hostAddress, _listenPort, _socketType);
+        _source = NeuronConnection.Connect(_address, _port, _socketType);
         if (_source != null) _actor = _source.AcquireActor(_actorID);
     }
 

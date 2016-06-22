@@ -624,9 +624,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 41173daca41f9a64b8552925c6a3c363, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  address: 127.0.0.1
-  port: 7001
-  socketType: 0
-  actorID: 0
-  connectToAxis: 1
-  boundAnimator: {fileID: 0}
+  _hostAddress: 127.0.0.1
+  _listenPort: 7001
+  _socketType: 0
+  _actorID: 0
