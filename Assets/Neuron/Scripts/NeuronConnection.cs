@@ -50,7 +50,7 @@ namespace Neuron
             if (source == null)
                 source = CreateConnection(address, port, socketType);
             
-            if (source != null) source.Grab();
+            if (source != null) source.IncrementReferenceCount();
 
             return source;
         }
@@ -59,9 +59,7 @@ namespace Neuron
         {
             if (source == null) return;
 
-            source.Release();
-
-            if (source.referenceCounter == 0)
+            if (source.DecrementReferenceCount() <= 0)
                 DestroyConnection(source);
         }
 
@@ -69,26 +67,25 @@ namespace Neuron
 
         #region Internal members
 
+        static List<NeuronSource> _sources = new List<NeuronSource>();
+
         // The network thread will access to one of sources when receiving
         // data from a device. This lock object is used to protect the object
         // from deletion by the main thread.
         static System.Object _sourcesLock = new System.Object();
 
-        static Dictionary<Guid, NeuronSource> _guidToSourceMap = new Dictionary<Guid, NeuronSource>();
-        static Dictionary<IntPtr, NeuronSource> _socketToSourceMap = new Dictionary<IntPtr, NeuronSource>();
-
         static NeuronSource FindConnection(string address, int port, SocketType socketType)
         {
             if (socketType == SocketType.TCP)
             {
-                foreach (var source in _guidToSourceMap.Values)
-                    if (source.socketType == SocketType.TCP && source.address == address && source.port == port)
+                foreach (var source in _sources)
+                    if (source.SocketType == SocketType.TCP && source.Address == address && source.Port == port)
                         return source;
             }
             else // SocketType.UDP
             {
-                foreach (var source in _guidToSourceMap.Values)
-                    if (source.socketType == SocketType.UDP && source.port == port)
+                foreach (var source in _sources)
+                    if (source.SocketType == SocketType.UDP && source.Port == port)
                         return source;
             }
             return null;
@@ -123,17 +120,12 @@ namespace Neuron
             }
 
             // If this is the first connection, register the reader callack.
-            if (_guidToSourceMap.Count == 0)
+            if (_sources.Count == 0)
                 NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, OnFrameDataReceived);
 
             // Create a new source.
             var source = new NeuronSource(address, port, socketType, socket);
-
-            lock (_sourcesLock)
-            {
-                _guidToSourceMap.Add(source.guid, source);
-                _socketToSourceMap.Add(socket, source);
-            }
+            lock (_sourcesLock) _sources.Add(source);
 
             return source;
         }
@@ -143,28 +135,22 @@ namespace Neuron
             if (source == null) return;
 
             // We have to make a lock before removing the source from the maps.
-            lock (_sourcesLock)
-            {
-                _guidToSourceMap.Remove(source.guid);
-                _socketToSourceMap.Remove(source.socketReference);
-            }
+            lock (_sourcesLock) _sources.Remove(source);
             // Now we can delete the source safely!
 
-            source.OnDestroy();
-
-            if (source.socketType == SocketType.TCP)
+            if (source.SocketType == SocketType.TCP)
             {
-                NeuronDataReader.BRCloseSocket(source.socketReference);
-                Debug.Log("[Neuron] Disconnected " + source.address + ":" + source.port);
+                NeuronDataReader.BRCloseSocket(source.Socket);
+                Debug.Log("[Neuron] Disconnected " + source.Address + ":" + source.Port);
             }
             else
             {
-                NeuronDataReader.BRCloseSocket(source.socketReference);
-                Debug.Log("[Neuron] Stopped listening " + source.port + ", " + source.guid);
+                NeuronDataReader.BRCloseSocket(source.Socket);
+                Debug.Log("[Neuron] Stopped listening " + source.Port);
             }
 
             // Unregister the reader callback if this was the last connection.
-            if (_guidToSourceMap.Count == 0)
+            if (_sources.Count == 0)
                 NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, null);
         }
 
@@ -175,9 +161,17 @@ namespace Neuron
         {
             lock (_sourcesLock)
             {
-                NeuronSource source;
-                if (_socketToSourceMap.TryGetValue(socket, out source))
-                    source.OnFrameDataReceived(header, data);
+                // It's dumb to use a for-loop with a generic list,
+                // but it's the fastest way to scan a list.
+                for (var i = 0; i < _sources.Count; i++)
+                {
+                    var source = _sources[i];
+                    if (source.Socket == socket)
+                    {
+                        source.OnFrameDataReceived(header, data);
+                        break;
+                    }
+                }
             }
         }
 

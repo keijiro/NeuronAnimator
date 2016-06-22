@@ -29,21 +29,20 @@ public class NeuronAnimatorInstance : MonoBehaviour
 
     void OnEnable()
     {
-        var source = NeuronConnection.Connect(_hostAddress, _listenPort, _socketType);
-        if (source != null) _actor = source.AcquireActor(_actorID);
+        _source = NeuronConnection.Connect(_hostAddress, _listenPort, _socketType);
+        if (_source != null) _actor = _source.AcquireActor(_actorID);
     }
 
     void OnDisable()
     {
-        if (_actor != null) NeuronConnection.Disconnect(_actor.owner);
+        if (_source != null) NeuronConnection.Disconnect(_source);
+        _source = null;
         _actor = null;
     }
 
     void Update()
     {
         if (_actor == null) return;
-
-        _actor.owner.OnUpdate();
 
         UpdateRoot();
 
@@ -137,6 +136,7 @@ public class NeuronAnimatorInstance : MonoBehaviour
     const int kBoneCount = (int)HumanBodyBones.LastBone;
 
     Animator _animator;
+    NeuronSource _source;
     NeuronActor _actor;
 
     float _scaleFactorForHips;
