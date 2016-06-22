@@ -1,7 +1,7 @@
 NeuronAnimator
 ==============
 
-01234567890123456789012345678901234567890123456789012345678901234567890123456789
+![gif](https://66.media.tumblr.com/16206b3e0076ad99a6f9850e739ec6fe/tumblr_o96knf6n2S1qio469o1_400.gif)
 
 *NeuronAnimator* is a minimum-required subset of the [Perception Neuron][Neuron]
 SDK for Unity. This plugin is aiming to provide the following points:
