@@ -1,3 +1,16 @@
+//
+// Neuron connection class
+//
+// Refactored by Keijiro Takahashi
+// https://github.com/keijiro/NeuronRetargeting
+//
+// This is a derivative work of the Perception Neuron SDK. You can use this
+// freely as one of "Perception Neuron SDK Derivatives". See LICENSE.pdf and
+// their website for further details.
+//
+// The following description is from the original source code.
+//
+
 /************************************************************************************
  Copyright: Copyright 2014 Beijing Noitom Technology Ltd. All Rights reserved.
  Pending Patents: PCT/CN2014/085659 PCT/CN2014/071006
@@ -17,186 +30,157 @@
  limitations under the License.
 ************************************************************************************/
 
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 using NeuronDataReaderWraper;
+using System;
+using System.Collections.Generic;
 
 namespace Neuron
 {
-	public static class NeuronConnection
-	{
-		public enum SocketType
-		{
-			TCP,
-			UDP
-		}
-		
-		static Dictionary<Guid, NeuronSource>				connections = new Dictionary<Guid, NeuronSource>();
-		static Dictionary<IntPtr, NeuronSource>				socketReferencesIndex = new Dictionary<IntPtr, NeuronSource>();
-        static System.Object _resourceLock = new System.Object();
-		
-		public static NeuronSource Connect( string address, int port, SocketType socketType )
-		{
-			NeuronSource source = FindConnection( address, port, socketType );
-			if( source != null )
-			{
-				source.Grab();
-				return source;
-			}
-			
-			source = CreateConnection( address, port, socketType );
-			if( source != null )
-			{
-				source.Grab();
-				return source;
-			}
-			
-			return null;
-		}
-		
-		public static void Disconnect( NeuronSource source )
-		{
-			if( source != null )
-			{
-				source.Release();
-				if( source.referenceCounter == 0 )
-				{
-					DestroyConnection( source );
-				}
-			}
-		}
-		
-		static NeuronSource CreateConnection( string address, int port, SocketType socketType )
-		{	
-			NeuronSource source = null;
-			IntPtr socketReference = IntPtr.Zero;
-			
-			if( socketType == SocketType.TCP )
-			{
-				socketReference = NeuronDataReader.BRConnectTo( address, port );
-				if( socketReference != IntPtr.Zero )
-				{
-					Debug.Log( string.Format( "[NeuronConnection] Connected to {0}:{1}.", address, port ) );
-				}
-				else
-				{
-					Debug.LogError( string.Format( "[NeuronConnection] Connecting to {0}:{1} failed.", address, port ) );
-				}
-			}
-			else
-			{
-				socketReference = NeuronDataReader.BRStartUDPServiceAt( port );
-				if( socketReference != IntPtr.Zero )
-				{
-					Debug.Log( string.Format( "[NeuronConnection] Start listening at {0}.", port ) );
-				}
-				else
-				{
-					Debug.LogError( string.Format( "[NeuronConnection] Start listening at {0} failed.", port ) );
-				}
-			}
-			
-			if( socketReference != IntPtr.Zero )
-			{
-				if( connections.Count == 0 )
-				{
-					RegisterReaderCallbacks();
-				}
-				
-				source = new NeuronSource( address, port, socketType, socketReference );
-                lock (_resourceLock)
-                {
-				connections.Add( source.guid, source );
-				socketReferencesIndex.Add( socketReference, source );
-                }
-			}
-			
-			return source;
-		}
-		
-		static void DestroyConnection( NeuronSource source )
-		{
-			if( source != null )
-			{
-				Guid guid = source.guid;
-				IntPtr socketReference = source.socketReference;
+    public static class NeuronConnection
+    {
+        #region Public functions
 
-                lock (_resourceLock)
-                {
-				connections.Remove( guid );
-				socketReferencesIndex.Remove( socketReference );
+        public enum SocketType { TCP, UDP }
+
+        public static NeuronSource Connect(string address, int port, SocketType socketType)
+        {
+            var source = FindConnection(address, port, socketType);
+
+            if (source == null)
+                source = CreateConnection(address, port, socketType);
+            
+            if (source != null) source.Grab();
+
+            return source;
+        }
+
+        public static void Disconnect(NeuronSource source)
+        {
+            if (source == null) return;
+
+            source.Release();
+
+            if (source.referenceCounter == 0)
+                DestroyConnection(source);
+        }
+
+        #endregion
+
+        #region Internal members
+
+        // The network thread will access to one of sources when receiving
+        // data from a device. This lock object is used to protect the object
+        // from deletion by the main thread.
+        static System.Object _sourcesLock = new System.Object();
+
+        static Dictionary<Guid, NeuronSource> _guidToSourceMap = new Dictionary<Guid, NeuronSource>();
+        static Dictionary<IntPtr, NeuronSource> _socketToSourceMap = new Dictionary<IntPtr, NeuronSource>();
+
+        static NeuronSource FindConnection(string address, int port, SocketType socketType)
+        {
+            if (socketType == SocketType.TCP)
+            {
+                foreach (var source in _guidToSourceMap.Values)
+                    if (source.socketType == SocketType.TCP && source.address == address && source.port == port)
+                        return source;
+            }
+            else // SocketType.UDP
+            {
+                foreach (var source in _guidToSourceMap.Values)
+                    if (source.socketType == SocketType.UDP && source.port == port)
+                        return source;
+            }
+            return null;
+        }
+
+        static NeuronSource CreateConnection(string address, int port, SocketType socketType)
+        {
+            // Try to make connection with using the native plugin.
+            var socket = IntPtr.Zero;
+
+            if (socketType == SocketType.TCP)
+            {
+                socket = NeuronDataReader.BRConnectTo(address, port);
+
+                if (socket == IntPtr.Zero) {
+                    Debug.LogError("[Neuron] Connection failed " + address + ":" + port);
+                    return null;
                 }
 
-				source.OnDestroy();
-			
-				string address = source.address;
-				int port = source.port;
-				SocketType socketType = source.socketType;
-				
-				if( socketType == SocketType.TCP )
-				{
-					NeuronDataReader.BRCloseSocket( socketReference );
-					Debug.Log( string.Format( "[NeuronConnection] Disconnected from {0}:{1}.", address, port ) );
-				}
-				else
-				{
-					NeuronDataReader.BRCloseSocket( socketReference );
-					Debug.Log( string.Format( "[NeuronConnection] Stop listening at {0}. {1}", port, source.guid.ToString( "N" ) ) );
-				}
-			}
-			
-			if( connections.Count == 0 )
-			{
-				UnregisterReaderCallbacks();
-			}
-		}
-		
-		static void RegisterReaderCallbacks()
-		{
-			NeuronDataReader.BRRegisterFrameDataCallback( IntPtr.Zero, OnFrameDataReceived );
-		}
-		
-		static void UnregisterReaderCallbacks()
-		{
-			NeuronDataReader.BRRegisterFrameDataCallback( IntPtr.Zero, null );
-		}
-		
-		static void OnFrameDataReceived( IntPtr customObject, IntPtr socketReference, IntPtr header, IntPtr data )
-		{
-			NeuronSource source = FindSource( socketReference );
-			if( source != null )
-			{
-				source.OnFrameDataReceived( header, data );
-			}
-		}
-		
-		static NeuronSource FindConnection( string address, int port, SocketType socketType )
-		{
-			NeuronSource source = null;
-            lock (_resourceLock)
-			foreach( KeyValuePair<Guid, NeuronSource> it in connections )
-			{
-				if( it.Value.socketType == SocketType.UDP && socketType == SocketType.UDP && it.Value.port == port )
-				{
-					source = it.Value;
-					break;
-				}
-				else if( it.Value.socketType == SocketType.TCP && socketType == SocketType.TCP && it.Value.address == address && it.Value.port == port )
-				{
-					source = it.Value;
-					break;
-				}
-			}
-			return source;
-		}
-		
-		static NeuronSource FindSource( IntPtr socketReference )
-		{
-			NeuronSource source = null;
-            lock (_resourceLock)
-			socketReferencesIndex.TryGetValue( socketReference, out source );
-			return source;
-		}
-	}
+                Debug.Log("[Neuron] Connected " + address + ":" + port);
+            }
+            else
+            {
+                socket = NeuronDataReader.BRStartUDPServiceAt(port);
+
+                if (socket == IntPtr.Zero) {
+                    Debug.LogError("[Neuron] Failed listening " + port);
+                    return null;
+                }
+
+                Debug.Log("[Neuron] Started listening " + port);
+            }
+
+            // If this is the first connection, register the reader callack.
+            if (_guidToSourceMap.Count == 0)
+                NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, OnFrameDataReceived);
+
+            // Create a new source.
+            var source = new NeuronSource(address, port, socketType, socket);
+
+            lock (_sourcesLock)
+            {
+                _guidToSourceMap.Add(source.guid, source);
+                _socketToSourceMap.Add(socket, source);
+            }
+
+            return source;
+        }
+
+        static void DestroyConnection(NeuronSource source)
+        {
+            if (source == null) return;
+
+            // We have to make a lock before removing the source from the maps.
+            lock (_sourcesLock)
+            {
+                _guidToSourceMap.Remove(source.guid);
+                _socketToSourceMap.Remove(source.socketReference);
+            }
+            // Now we can delete the source safely!
+
+            source.OnDestroy();
+
+            if (source.socketType == SocketType.TCP)
+            {
+                NeuronDataReader.BRCloseSocket(source.socketReference);
+                Debug.Log("[Neuron] Disconnected " + source.address + ":" + source.port);
+            }
+            else
+            {
+                NeuronDataReader.BRCloseSocket(source.socketReference);
+                Debug.Log("[Neuron] Stopped listening " + source.port + ", " + source.guid);
+            }
+
+            // Unregister the reader callback if this was the last connection.
+            if (_guidToSourceMap.Count == 0)
+                NeuronDataReader.BRRegisterFrameDataCallback(IntPtr.Zero, null);
+        }
+
+        static void OnFrameDataReceived(
+            IntPtr customObject, IntPtr socket,
+            IntPtr header, IntPtr data
+        )
+        {
+            lock (_sourcesLock)
+            {
+                NeuronSource source;
+                if (_socketToSourceMap.TryGetValue(socket, out source))
+                    source.OnFrameDataReceived(header, data);
+            }
+        }
+
+        #endregion
+    }
 }

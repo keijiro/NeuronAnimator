@@ -35,7 +35,7 @@ public class NeuronAnimatorInstance : MonoBehaviour
 
     void OnDisable()
     {
-        NeuronConnection.Disconnect(_actor.owner);
+        if (_actor != null) NeuronConnection.Disconnect(_actor.owner);
         _actor = null;
     }
 
