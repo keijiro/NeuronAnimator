@@ -39,21 +39,18 @@ namespace Neuron
 		public Guid											guid = Guid.NewGuid();
 		public string										address { get; private set; }
 		public int											port { get; private set; }
-		public int											commandServerPort{ get; private set; }
 		public NeuronConnection.SocketType					socketType { get; private set; }
 		public IntPtr										socketReference { get; private set; }
-		public IntPtr										commandSocketReference { get; private set; }
 		public int											numOfActiveActors { get { return activeActors.Count; } }
 		public int											numOfSuspendedActors { get { return suspendedActors.Count; } }
 		public int											referenceCounter { get; private set; }
 		
-		public NeuronSource( string address, int port, int commandServerPort, NeuronConnection.SocketType socketType, IntPtr socketReference, IntPtr commandSocketReference )
+		public NeuronSource( string address, int port, NeuronConnection.SocketType socketType, IntPtr socketReference)
 		{
 			this.address = address;
 			this.port = port;
 			this.socketType = socketType;
 			this.socketReference = socketReference;
-			this.commandSocketReference = commandSocketReference;
 			this.referenceCounter = 0;
 			
 			// QueryNumOfActors();
@@ -179,10 +176,6 @@ namespace Neuron
 				
 				actor.OnReceivedMotionData( header, data );
 			}
-		}
-		
-		public virtual void OnSocketStatusChanged( SocketStatus status, string msg )
-		{
 		}
 		
 		public NeuronActor AcquireActor( int actorID )

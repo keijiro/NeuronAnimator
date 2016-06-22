@@ -34,11 +34,10 @@ namespace Neuron
 		
 		static Dictionary<Guid, NeuronSource>				connections = new Dictionary<Guid, NeuronSource>();
 		static Dictionary<IntPtr, NeuronSource>				socketReferencesIndex = new Dictionary<IntPtr, NeuronSource>();
-		static Dictionary<IntPtr, NeuronSource>				commandSocketReferenceIndex = new Dictionary<IntPtr, NeuronSource>();
 		
 		public static int									numOfSources { get { return connections.Count; } }
 		
-		public static NeuronSource Connect( string address, int port, int commandServerPort, SocketType socketType )
+		public static NeuronSource Connect( string address, int port, SocketType socketType )
 		{
 			NeuronSource source = FindConnection( address, port, socketType );
 			if( source != null )
@@ -47,7 +46,7 @@ namespace Neuron
 				return source;
 			}
 			
-			source = CreateConnection( address, port, commandServerPort, socketType );
+			source = CreateConnection( address, port, socketType );
 			if( source != null )
 			{
 				source.Grab();
@@ -69,6 +68,7 @@ namespace Neuron
 			}
 		}
 		
+        /*
 		public static void OnUpdate()
 		{
 			foreach( KeyValuePair<Guid, NeuronSource> it in connections )
@@ -76,6 +76,7 @@ namespace Neuron
 				it.Value.OnUpdate();
 			}
 		}
+        */
 		
 		public static NeuronSource[] GetSources()
 		{
@@ -84,11 +85,10 @@ namespace Neuron
 			return sources;
 		}
 		
-		static NeuronSource CreateConnection( string address, int port, int commandServerPort, SocketType socketType )
+		static NeuronSource CreateConnection( string address, int port, SocketType socketType )
 		{	
 			NeuronSource source = null;
 			IntPtr socketReference = IntPtr.Zero;
-			IntPtr commandSocketReference = IntPtr.Zero;
 			
 			if( socketType == SocketType.TCP )
 			{
@@ -122,27 +122,9 @@ namespace Neuron
 					RegisterReaderCallbacks();
 				}
 				
-				if( commandServerPort > 0 )
-				{
-					// connect to command server
-					commandSocketReference = NeuronDataReader.BRConnectTo( address, commandServerPort );
-					if( commandSocketReference != IntPtr.Zero )
-					{
-						Debug.Log( string.Format( "[NeuronConnection] Connected to command server {0}:{1}.", address, commandServerPort ) );
-					}
-					else
-					{
-						Debug.LogError( string.Format( "[NeuronConnection] Connected to command server {0}:{1} failed.", address, commandServerPort ) );
-					}
-				}
-				
-				source = new NeuronSource( address, port, commandServerPort, socketType, socketReference, commandSocketReference );
+				source = new NeuronSource( address, port, socketType, socketReference );
 				connections.Add( source.guid, source );
 				socketReferencesIndex.Add( socketReference, source );
-				if( commandSocketReference != IntPtr.Zero )
-				{
-					commandSocketReferenceIndex.Add( commandSocketReference, source );
-				}
 			}
 			
 			return source;
@@ -152,29 +134,16 @@ namespace Neuron
 		{
 			if( source != null )
 			{
-				if( source.commandSocketReference != IntPtr.Zero )
-				{
-					commandSocketReferenceIndex.Remove( source.commandSocketReference );
-				}
-			
 				source.OnDestroy();
 			
 				Guid guid = source.guid;
 				string address = source.address;
 				int port = source.port;
-				int commandServerPort = source.commandServerPort;
 				SocketType socketType = source.socketType;
 				IntPtr socketReference = source.socketReference;
-				IntPtr commandSocketReference = source.commandSocketReference;
 				
 				connections.Remove( guid );
 				socketReferencesIndex.Remove( socketReference );
-				
-				if( commandSocketReference != IntPtr.Zero )
-				{
-					NeuronDataReader.BRCloseSocket( commandSocketReference );
-					Debug.Log( string.Format( "[NeuronConnection] Disconnected from command server {0}:{1}.", address, commandServerPort ) );
-				}
 				
 				if( socketType == SocketType.TCP )
 				{
@@ -197,13 +166,11 @@ namespace Neuron
 		static void RegisterReaderCallbacks()
 		{
 			NeuronDataReader.BRRegisterFrameDataCallback( IntPtr.Zero, OnFrameDataReceived );
-			NeuronDataReader.BRRegisterSocketStatusCallback( IntPtr.Zero, OnSocketStatusChanged );
 		}
 		
 		static void UnregisterReaderCallbacks()
 		{
 			NeuronDataReader.BRRegisterFrameDataCallback( IntPtr.Zero, null );
-			NeuronDataReader.BRRegisterSocketStatusCallback( IntPtr.Zero, null );
 		}
 		
 		static void OnFrameDataReceived( IntPtr customObject, IntPtr socketReference, IntPtr header, IntPtr data )
@@ -212,15 +179,6 @@ namespace Neuron
 			if( source != null )
 			{
 				source.OnFrameDataReceived( header, data );
-			}
-		}
-		
-		static void OnSocketStatusChanged( IntPtr customObject, IntPtr socketReference, SocketStatus status, string msg )
-		{
-			NeuronSource source = FindSource( socketReference );
-			if( source != null )
-			{
-				source.OnSocketStatusChanged( status, msg );
 			}
 		}
 		
@@ -247,13 +205,6 @@ namespace Neuron
 		{
 			NeuronSource source = null;
 			socketReferencesIndex.TryGetValue( socketReference, out source );
-			return source;
-		}
-		
-		static NeuronSource FindCommandSource( IntPtr commandSocketReference )
-		{
-			NeuronSource source = null;
-			commandSocketReferenceIndex.TryGetValue( commandSocketReference, out source );
 			return source;
 		}
 	}

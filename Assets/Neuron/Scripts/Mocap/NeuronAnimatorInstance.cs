@@ -29,7 +29,7 @@ public class NeuronAnimatorInstance : MonoBehaviour
 
     void OnEnable()
     {
-        var source = NeuronConnection.Connect(_hostAddress, _listenPort, -1, _socketType);
+        var source = NeuronConnection.Connect(_hostAddress, _listenPort, _socketType);
         if (source != null) _actor = source.AcquireActor(_actorID);
     }
 
