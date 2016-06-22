@@ -34,8 +34,7 @@ namespace Neuron
 		
 		static Dictionary<Guid, NeuronSource>				connections = new Dictionary<Guid, NeuronSource>();
 		static Dictionary<IntPtr, NeuronSource>				socketReferencesIndex = new Dictionary<IntPtr, NeuronSource>();
-		
-		public static int									numOfSources { get { return connections.Count; } }
+        static System.Object _resourceLock = new System.Object();
 		
 		public static NeuronSource Connect( string address, int port, SocketType socketType )
 		{
@@ -66,23 +65,6 @@ namespace Neuron
 					DestroyConnection( source );
 				}
 			}
-		}
-		
-        /*
-		public static void OnUpdate()
-		{
-			foreach( KeyValuePair<Guid, NeuronSource> it in connections )
-			{
-				it.Value.OnUpdate();
-			}
-		}
-        */
-		
-		public static NeuronSource[] GetSources()
-		{
-			NeuronSource[] sources = new NeuronSource[connections.Count];
-			connections.Values.CopyTo( sources, 0 );
-			return sources;
 		}
 		
 		static NeuronSource CreateConnection( string address, int port, SocketType socketType )
@@ -123,8 +105,11 @@ namespace Neuron
 				}
 				
 				source = new NeuronSource( address, port, socketType, socketReference );
+                lock (_resourceLock)
+                {
 				connections.Add( source.guid, source );
 				socketReferencesIndex.Add( socketReference, source );
+                }
 			}
 			
 			return source;
@@ -134,16 +119,20 @@ namespace Neuron
 		{
 			if( source != null )
 			{
+				Guid guid = source.guid;
+				IntPtr socketReference = source.socketReference;
+
+                lock (_resourceLock)
+                {
+				connections.Remove( guid );
+				socketReferencesIndex.Remove( socketReference );
+                }
+
 				source.OnDestroy();
 			
-				Guid guid = source.guid;
 				string address = source.address;
 				int port = source.port;
 				SocketType socketType = source.socketType;
-				IntPtr socketReference = source.socketReference;
-				
-				connections.Remove( guid );
-				socketReferencesIndex.Remove( socketReference );
 				
 				if( socketType == SocketType.TCP )
 				{
@@ -185,6 +174,7 @@ namespace Neuron
 		static NeuronSource FindConnection( string address, int port, SocketType socketType )
 		{
 			NeuronSource source = null;
+            lock (_resourceLock)
 			foreach( KeyValuePair<Guid, NeuronSource> it in connections )
 			{
 				if( it.Value.socketType == SocketType.UDP && socketType == SocketType.UDP && it.Value.port == port )
@@ -204,6 +194,7 @@ namespace Neuron
 		static NeuronSource FindSource( IntPtr socketReference )
 		{
 			NeuronSource source = null;
+            lock (_resourceLock)
 			socketReferencesIndex.TryGetValue( socketReference, out source );
 			return source;
 		}

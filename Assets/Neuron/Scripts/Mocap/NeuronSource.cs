@@ -36,6 +36,8 @@ namespace Neuron
 		Dictionary<int, NeuronActor>						activeActors = new Dictionary<int, NeuronActor>();
 		Dictionary<int, NeuronActor>						suspendedActors = new Dictionary<int, NeuronActor>();
 		
+        static System.Object _resourceLock = new System.Object();
+		
 		public Guid											guid = Guid.NewGuid();
 		public string										address { get; private set; }
 		public int											port { get; private set; }
@@ -107,6 +109,9 @@ namespace Neuron
 		{
 			int now = NeuronActor.GetTimeStamp();
 			List<NeuronActor> suspend_list = new List<NeuronActor>();
+			List<NeuronActor> resume_list = new List<NeuronActor>();
+            lock (_resourceLock)
+            {
 			foreach( KeyValuePair<int, NeuronActor> iter in activeActors )
 			{
 				if( now - iter.Value.timeStamp > NoDataFrameTimeOut )
@@ -115,7 +120,6 @@ namespace Neuron
 				}
 			}
 			
-			List<NeuronActor> resume_list = new List<NeuronActor>();
 			foreach( KeyValuePair<int, NeuronActor> iter in suspendedActors )
 			{
 				if( now - iter.Value.timeStamp < NoDataFrameTimeOut )
@@ -123,6 +127,7 @@ namespace Neuron
 					resume_list.Add( iter.Value );
 				}
 			}
+            }
 			
 			for( int i = 0; i < suspend_list.Count; ++i )
 			{
@@ -156,83 +161,35 @@ namespace Neuron
 			}
 			
 			int actorID = (int)header.AvatarIndex;			
-			NeuronActor actor = null;
-			// find active actor
-			actor = FindActiveActor( actorID );
-			if( actor != null )
-			{
-				// if actor is active
-				actor.OnReceivedMotionData( header, data );
-			}
-			else
-			{
-				// find suspended actor
-				actor = FindSuspendedActor( actorID );
-				if( actor == null )
-				{
-					// if no such actor, create one
-					actor = CreateActor( actorID );
-				}
-				
-				actor.OnReceivedMotionData( header, data );
-			}
+            NeuronActor actor = FindOrCreateActor(actorID);
+            actor.OnReceivedMotionData(header, data);
 		}
 		
 		public NeuronActor AcquireActor( int actorID )
 		{
-			NeuronActor actor = FindActiveActor( actorID );
-			if( actor != null )
-			{
-				return actor;
-			}
-			
-			actor = FindSuspendedActor( actorID );
-			if( actor != null )
-			{
-				return actor;
-			}
-			
-			actor = CreateActor( actorID );
-			return actor;
+            return FindOrCreateActor(actorID);
 		}
 		
-		public NeuronActor[] GetActiveActors()
-		{
-			NeuronActor[] actors = new NeuronActor[activeActors.Count];
-			activeActors.Values.CopyTo( actors, 0 );
-			return actors;
-		}
-		
-		public NeuronActor[] GetActors()
-		{
-			NeuronActor[] actors = new NeuronActor[activeActors.Count + suspendedActors.Count];
-			activeActors.Values.CopyTo( actors, 0 );
-			activeActors.Values.CopyTo( actors, activeActors.Count );
-			return actors;
-		}
-		
-		NeuronActor CreateActor( int actorID )
-		{
-			NeuronActor find = FindSuspendedActor( actorID );
-			if( find == null )
-			{
-				NeuronActor actor = new NeuronActor( this, actorID );
-				suspendedActors.Add( actorID, actor );
-				return actor;
-			}
-			return find;
-		}
-		
-		void DestroyActor( int actorID )
-		{
-			activeActors.Remove( actorID );
-			suspendedActors.Remove( actorID );
-		}
+        NeuronActor FindOrCreateActor(int actorID)
+        {
+            lock (_resourceLock)
+            {
+                NeuronActor actor;
+                if (activeActors.TryGetValue(actorID, out actor)) return actor;
+                if (suspendedActors.TryGetValue(actorID, out actor)) return actor;
+                actor = new NeuronActor(this, actorID);
+                suspendedActors.Add(actorID, actor);
+                return actor;
+            }
+        }
 		
 		void SuspendActor( NeuronActor actor )
 		{
+            lock (_resourceLock)
+            {
 			activeActors.Remove( actor.actorID );
 			suspendedActors.Add( actor.actorID, actor );
+            }
 			
 			Debug.Log( string.Format( "[NeuronSource] Suspend actor {0}", actor.guid.ToString( "N" ) ) );
 			for( int i = 0; i < suspendActorCallbacks.Count; ++i )
@@ -243,8 +200,11 @@ namespace Neuron
 		
 		void ResumeActor( NeuronActor actor )
 		{
+            lock (_resourceLock)
+            {
 			suspendedActors.Remove( actor.actorID );
 			activeActors.Add( actor.actorID, actor );
+            }
 			
 			Debug.Log( string.Format( "[NeuronSource] Resume actor {0}", actor.guid.ToString( "N" ) ) );
 			
@@ -267,20 +227,6 @@ namespace Neuron
 				suspend_list[i].OnNoFrameData( suspend_list[i] );
 				SuspendActor( suspend_list[i] );
 			}
-		}
-		
-		NeuronActor FindSuspendedActor( int actorID )
-		{
-			NeuronActor actor = null;
-			suspendedActors.TryGetValue( actorID, out actor );
-			return actor;
-		}
-		
-		NeuronActor FindActiveActor( int actorID )
-		{
-			NeuronActor actor = null;
-			activeActors.TryGetValue( actorID, out actor  );
-			return actor;
 		}
 	}
 }
