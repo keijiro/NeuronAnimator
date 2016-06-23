@@ -169,17 +169,29 @@ public class NeuronAnimator : MonoBehaviour
         // The height of the hips in the base model.
         const float kBaseHipsHeight = 1.113886f;
 
+        // Get the feet position.
+        var lfoot = _animator.GetBoneTransform(HumanBodyBones.LeftFoot);
+        var rfoot = _animator.GetBoneTransform(HumanBodyBones.RightFoot);
+        var y_feet = (lfoot.position.y + rfoot.position.y) * 0.5f;
+        y_feet -= (_animator.leftFeetBottomHeight + _animator.leftFeetBottomHeight) * 0.5f;
+
         // Calculate the scale factor.
         var hips = _animator.GetBoneTransform(HumanBodyBones.Hips);
-        _scaleFactorForHips = hips.position.y / kBaseHipsHeight;
+        _scaleFactorForHips = (hips.position.y - y_feet) / kBaseHipsHeight;
 
         // Retrieve bone rotations.
         for (var i = 0; i < kBoneCount; ++i)
         {
             var bone = _animator.GetBoneTransform((HumanBodyBones)i);
             if (bone == null) continue;
+
+            // Default rotation
             _defaultRotations[i] = bone.localRotation;
-            _resetRotations[i] = Quaternion.Inverse(bone.parent.rotation);
+
+            // "Reset to standard" rotation
+            _resetRotations[i] =
+                Quaternion.Inverse(bone.parent.rotation) *
+                _animator.transform.rotation;
         }
     }
 
