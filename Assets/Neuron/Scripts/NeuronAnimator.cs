@@ -98,9 +98,11 @@ public class NeuronAnimator : MonoBehaviour
         var rot = _actor.GetReceivedRotation(NeuronBones.Hips);
 
         var d_rot = _defaultRotations[(int)HumanBodyBones.Hips];
+        var r_rot = _resetRotations[(int)HumanBodyBones.Hips];
+        var r_rot_inv = Quaternion.Inverse(r_rot);
 
-        hips.localPosition = pos * _scaleFactorForHips;
-        hips.localRotation = Quaternion.Euler(rot) * d_rot;
+        hips.localPosition = r_rot * pos * _scaleFactorForHips;
+        hips.localRotation = r_rot * Quaternion.Euler(rot) * r_rot_inv * d_rot;
     }
 
     void UpdateBoneRotation(
