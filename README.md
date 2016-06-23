@@ -2,30 +2,37 @@ NeuronAnimator
 ==============
 
 ![gif](https://66.media.tumblr.com/16206b3e0076ad99a6f9850e739ec6fe/tumblr_o96knf6n2S1qio469o1_400.gif)
+![gif](https://67.media.tumblr.com/b679c0780f3bf9bd3fe5f7734e04c5ee/tumblr_o986k6HdVU1qio469o1_400.gif)
 
 *NeuronAnimator* is a minimum-required subset of the [Perception Neuron][Neuron]
 SDK for Unity. This plugin is aiming to provide the following points:
 
 **Retargeting**
 
-The original SDK doesn't support retargeting and models have to be rigged in a
-very specific way. With this plugin, you can use any humanoid model with Neuron.
+The original SDK doesn't support retargeting, and therefore models have to be
+rigged in a very specific way. Within this plugin, you can animate any humanoid
+model with Neuron.
 
 **Simpleness**
 
-There is only one component -- all you have to do is just adding NeuronAnimator
-to a game object.
+All you have to do is just adding the NeuronAnimator component to a game
+object. Then it starts controlling the model based on input from a Neuron mocap
+system. That’s that! Simple!
 
 **Robustness**
 
-The original SDK is thread-unsafe and frequently crashes in some environments.
-The entire code has been overhauled in this plugin. Should work robustly!
+The original SDK lacks thread-safety and hence crashes periodically in some
+environments. To avoid issues like this, the entire code has been overhauled
+for this plugin. Should work robustly!
 
-Current status of the project
------------------------------
+Limitations
+-----------
 
-This plugin is still under development and not in the final quality. Any feedback
-is welcomed :)
+- Finger animation is not supported yet.
+- To initialize the retargeting information properly, humanoid models have to
+  be in a **perfect T-stance** pose. If the initial pose of the model looks
+  loose (hands are lower than shoulder, feet are widely opened, etc.), it’s
+  recommended to straighten it up manually.
 
 License
 -------
