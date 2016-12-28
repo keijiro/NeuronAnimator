@@ -87,6 +87,40 @@ public class NeuronAnimator : MonoBehaviour
         UpdateBoneRotation(HumanBodyBones.LeftLowerArm, NeuronBones.LeftForeArm);
         UpdateBoneRotation(HumanBodyBones.LeftHand, NeuronBones.LeftHand);
         
+        // Right fingers
+        UpdateBoneRotation(HumanBodyBones.RightIndexDistal, NeuronBones.RightHandIndex3);
+        UpdateBoneRotation(HumanBodyBones.RightIndexIntermediate, NeuronBones.RightHandIndex2);
+        UpdateBoneRotation(HumanBodyBones.RightIndexProximal, NeuronBones.RightHandIndex1);
+        UpdateBoneRotation(HumanBodyBones.RightThumbDistal, NeuronBones.RightHandThumb3);
+        UpdateBoneRotation(HumanBodyBones.RightThumbIntermediate, NeuronBones.RightHandThumb2);
+        UpdateBoneRotation(HumanBodyBones.RightThumbProximal, NeuronBones.RightHandThumb1);
+        UpdateBoneRotation(HumanBodyBones.RightMiddleDistal, NeuronBones.RightHandMiddle3);
+        UpdateBoneRotation(HumanBodyBones.RightMiddleIntermediate, NeuronBones.RightHandMiddle2);
+        UpdateBoneRotation(HumanBodyBones.RightMiddleProximal, NeuronBones.RightHandMiddle1);
+        UpdateBoneRotation(HumanBodyBones.RightRingDistal, NeuronBones.RightHandRing3);
+        UpdateBoneRotation(HumanBodyBones.RightRingIntermediate, NeuronBones.RightHandRing2);
+        UpdateBoneRotation(HumanBodyBones.RightRingProximal, NeuronBones.RightHandRing1);
+        UpdateBoneRotation(HumanBodyBones.RightLittleDistal, NeuronBones.RightHandPinky3);
+        UpdateBoneRotation(HumanBodyBones.RightLittleIntermediate, NeuronBones.RightHandPinky2);
+        UpdateBoneRotation(HumanBodyBones.RightLittleProximal, NeuronBones.RightHandPinky1);
+
+        // Left fingers
+        UpdateBoneRotation(HumanBodyBones.LeftIndexDistal, NeuronBones.LeftHandIndex3);
+        UpdateBoneRotation(HumanBodyBones.LeftIndexIntermediate, NeuronBones.LeftHandIndex2);
+        UpdateBoneRotation(HumanBodyBones.LeftIndexProximal, NeuronBones.LeftHandIndex1);
+        UpdateBoneRotation(HumanBodyBones.LeftThumbDistal, NeuronBones.LeftHandThumb3);
+        UpdateBoneRotation(HumanBodyBones.LeftThumbIntermediate, NeuronBones.LeftHandThumb2);
+        UpdateBoneRotation(HumanBodyBones.LeftThumbProximal, NeuronBones.LeftHandThumb1);
+        UpdateBoneRotation(HumanBodyBones.LeftMiddleDistal, NeuronBones.LeftHandMiddle3);
+        UpdateBoneRotation(HumanBodyBones.LeftMiddleIntermediate, NeuronBones.LeftHandMiddle2);
+        UpdateBoneRotation(HumanBodyBones.LeftMiddleProximal, NeuronBones.LeftHandMiddle1);
+        UpdateBoneRotation(HumanBodyBones.LeftRingDistal, NeuronBones.LeftHandRing3);
+        UpdateBoneRotation(HumanBodyBones.LeftRingIntermediate, NeuronBones.LeftHandRing2);
+        UpdateBoneRotation(HumanBodyBones.LeftRingProximal, NeuronBones.LeftHandRing1);
+        UpdateBoneRotation(HumanBodyBones.LeftLittleDistal, NeuronBones.LeftHandPinky3);
+        UpdateBoneRotation(HumanBodyBones.LeftLittleIntermediate, NeuronBones.LeftHandPinky2);
+        UpdateBoneRotation(HumanBodyBones.LeftLittleProximal, NeuronBones.LeftHandPinky1);
+
         FixUpWithFeetPosition();
     }
 
