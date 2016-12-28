@@ -28,7 +28,6 @@ for this plugin. Should work robustly!
 Limitations
 -----------
 
-- Finger animation is not supported yet.
 - To retrieve retargeting information properly, the target model has to be
   in a **perfect** T-stance pose. If the default pose of the model looks
   loose (hands are lower than shoulder, feet are widely opened, etc.), it’s
